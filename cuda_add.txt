@@ -1,0 +1,67 @@
+Steps:
+1. Open Google Colab
+2. Click on runtime and then change runtime type
+3. Select GPU
+4. On right side, click on dropdown of connect and click on connect to hosted runtime.
+5. Pasete below code to run
+
+# -*- coding: utf-8 -*-
+
+
+!/usr/local/cuda/bin/nvcc --version
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+# Commented out IPython magic to ensure Python compatibility.
+ %load_ext nvcc_plugin
+
+# Commented out IPython magic to ensure Python compatibility.
+ %%cu
+ #include <stdio.h>
+ #include <cuda.h>
+ #include <cuda_runtime.h>
+ #include <time.h>
+ #define N 7
+ __global__ void gpuAdd(int *d_a, int *d_b, int *d_c)
+ {
+     int tid = blockIdx.x;
+     if (tid < N)
+     d_c[tid] = d_a[tid] + d_b[tid];
+ }
+ int main(void)
+ {
+     int h_a[N], h_b[N], h_c[N];
+     int *d_a, *d_b, *d_c;
+     cudaMalloc((void**)&d_a, N * sizeof(int));
+     cudaMalloc((void**)&d_b, N * sizeof(int));
+     cudaMalloc((void**)&d_c, N * sizeof(int));
+     cudaEvent_t start,end;
+     cudaEventCreate(&start);
+     cudaEventCreate(&end);
+     cudaEventRecord(start);
+     for (int i = 0; i < N; i++) 
+     {
+         h_a[i] = 2*i*i;
+         h_b[i] = i ;
+     }
+     cudaMemcpy(d_a, h_a, N * sizeof(int), cudaMemcpyHostToDevice);
+     cudaMemcpy(d_b, h_b, N * sizeof(int), cudaMemcpyHostToDevice);
+     gpuAdd <<<N, 1 >>>(d_a, d_b, d_c);
+     cudaMemcpy(h_c, d_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+     printf("Vector addition on GPU \n");
+     for (int i = 0; i < N; i++) 
+     {
+         printf("The sum of %d element is %d + %d = %d\n", i, h_a[i], h_b[i],h_c[i]);
+     }
+     cudaEventRecord(end);
+     cudaEventSynchronize(end);
+     float time=0;
+     cudaEventElapsedTime(&time, start, end);
+     printf("\nexecution time=%f",time);
+  
+     cudaFree(d_a);
+     cudaFree(d_b);
+     cudaFree(d_c);
+     return 0;
+ }
+
